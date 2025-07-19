@@ -1,0 +1,881 @@
+package codigo;
+
+import java_cup.runtime.*;
+
+parser code
+{:
+    private Symbol s;
+    public TablaSimbolos tabla = new TablaSimbolos();  // Tabla de símbolos
+    public AnalizadorSemantico semantico = new AnalizadorSemantico(tabla);  // Integrado directamente
+
+    public void syntax_error(Symbol s){
+        this.s = s;
+        System.err.println("Error de sintaxis en : " + s.value);
+    }
+
+    public Symbol getS(){
+        return this.s;
+    }
+:};
+
+/* AGREGAR ESTA SECCIÓN */
+action code 
+{:
+    // Variables que se usarán en las acciones semánticas
+    String tipoActual = "";
+    String modificadorActual = "";
+:};
+
+/* Terminales - deben coincidir exactamente con LexerCup.flex */
+
+// Palabras reservadas - Control de flujo
+terminal PALABRA_RESERVADA_IF, PALABRA_RESERVADA_ELSE;
+terminal PALABRA_RESERVADA_FOR, PALABRA_RESERVADA_WHILE, PALABRA_RESERVADA_WHEN;
+terminal PALABRA_RESERVADA_TRUE, PALABRA_RESERVADA_FALSE;
+terminal OPERADOR_AND, OPERADOR_OR, OPERADOR_NOT;
+
+
+// Tipos de datos
+terminal PALABRA_RESERVADA_INT, PALABRA_RESERVADA_FLOAT, PALABRA_RESERVADA_CHAR;
+terminal PALABRA_RESERVADA_LONG, PALABRA_RESERVADA_SHORT, PALABRA_RESERVADA_STRING;
+terminal PALABRA_RESERVADA_LIST, PALABRA_RESERVADA_ARRAYLIST, PALABRA_RESERVADA_MAP;
+terminal PALABRA_RESERVADA_BOOLEAN,PALABRA_RESERVADA_DOUBLE;
+
+// POO
+terminal PALABRA_RESERVADA_CLASS, PALABRA_RESERVADA_INTERFACE, PALABRA_RESERVADA_ENUM;
+terminal PALABRA_RESERVADA_ABSTRACT, PALABRA_RESERVADA_FINAL;
+terminal PALABRA_RESERVADA_EXTENDS, PALABRA_RESERVADA_IMPLEMENTS;
+terminal PALABRA_RESERVADA_SUPER, PALABRA_RESERVADA_THIS, PALABRA_RESERVADA_NEW;
+
+// Modificadores
+terminal PALABRA_RESERVADA_PUBLIC, PALABRA_RESERVADA_PRIVATE, PALABRA_RESERVADA_PROTECTED;
+terminal PALABRA_RESERVADA_STATIC, PALABRA_RESERVADA_OVERRIDE;
+
+// Funciones
+terminal PALABRA_RESERVADA_RETURN, PALABRA_RESERVADA_VOID;
+
+// Excepciones
+terminal PALABRA_RESERVADA_TRY, PALABRA_RESERVADA_CATCH;
+
+// Utilidades
+terminal PALABRA_RESERVADA_IMPORT, PALABRA_RESERVADA_VAR, PALABRA_RESERVADA_VAL,PALABRA_RESERVADA_CONST;
+terminal PALABRA_RESERVADA_NULL;
+
+// Operadores
+terminal OPERADOR_FLECHA, OPERADOR_RANGO;
+terminal OPERADOR_ADICION, OPERADOR_SUSTRACCION, OPERADOR_MULTIPLICACION, OPERADOR_DIVISION;
+terminal OPERADOR_INCREMENTO, OPERADOR_DISMINUCION;
+terminal OPERADOR_MAYOR_QUE, OPERADOR_MENOR_QUE, OPERADOR_MAYOR_IGUAL_QUE, OPERADOR_MENOR_IGUAL_QUE;
+terminal OPERADOR_IGUAL, OPERADOR_DISTINTO;
+terminal OPERADOR_ASIGNACION;
+terminal OPERADOR_ASIGNACION_MULTIPLICACION, OPERADOR_ASIGNACION_DIVISION;
+terminal OPERADOR_ASIGNACION_ADICION, OPERADOR_ASIGNACION_SUSTRACCION;
+terminal OPERADOR_ASIGNACION_DESPLAZAMIENTO_DERECHA, OPERADOR_ASIGNACION_DESPLAZAMIENTO_IZQUIERDA;
+terminal OPERADOR_DESPLAZAMIENTO_DERECHA, OPERADOR_DESPLAZAMIENTO_IZQUIERDA;
+
+// Delimitadores
+terminal OPERADOR_PARENTESIS_ABRIR, OPERADOR_PARENTESIS_CERRAR;
+terminal OPERADOR_CORCHETE_ABRIR, OPERADOR_CORCHETE_CERRAR;
+terminal OPERADOR_LLAVE_ABRIR, OPERADOR_LLAVE_CERRAR;
+
+// Puntuación
+terminal COMA, PUNTO_Y_COMA, PUNTO;
+terminal COMILLA_DOBLE, COMILLA_SIMPLE;
+
+// Literales con valor
+terminal String IDENTIFICADOR;
+terminal String LITERAL_NUM_ENTERO, LITERAL_NUM_FLOTANTE;
+terminal String LITERAL_CARACTER, LITERAL_STRING;
+
+// Error
+terminal ERROR;
+
+/* No terminales */
+non terminal programa;
+non terminal modificadores_clase, herencia, implementacion, lista_interfaces, declaracion_clase, cuerpo_clase, lista_modificadores, modificador;
+non terminal declaracion, lista_declaraciones, declaracion_import, ruta_import;
+non terminal lista_miembros, miembro, declaracion_atributo, declaracion_metodo, declaracion_constructor, tipo, parametros, lista_parametros, parametro, lista_sentencias, sentencia_try_catch, lista_catch, catch;
+non terminal declaracion_variable, asignacion, simple_operador;
+non terminal tipo_dato;
+non terminal expresion_aritmetica, expresion_simple;
+non terminal sentencia_if,sentencia_else , sentencia, sentencia_while, sentencia_for, sentencia_return, declaracion_variable_local, llamada_metodo, argumentos, sentencia_asignacion, declaracion_constante;
+non terminal bloque, sentencia_expresion, lista_argumentos;
+non terminal sentencia_llamada_metodo, declaracion_for, expresion_for, expresion_or, expresion_and, expresion_multiplicativa, acceso_array, creacion_objeto;
+non terminal expresion_if,sub_expresion_matematica,tipo_compuesto2;
+non terminal sentencia_when,lista_ramas_when,rama_when,condicion_when,lista_valores_when,expresion_rango;
+
+non terminal Expresion expresion_primaria,expresion_matematica,expresion,expresion_numerica,expresion_logica,expresion_relacional,
+    tipo_compuesto;
+/* Precedencia de operadores (de menor a mayor) */
+precedence left OPERADOR_OR;
+precedence left OPERADOR_AND;
+precedence right OPERADOR_NOT;
+
+precedence left OPERADOR_IGUAL, OPERADOR_DISTINTO;
+precedence left OPERADOR_MAYOR_QUE, OPERADOR_MENOR_QUE, OPERADOR_MAYOR_IGUAL_QUE, OPERADOR_MENOR_IGUAL_QUE;
+precedence left OPERADOR_ADICION, OPERADOR_SUSTRACCION;
+precedence left OPERADOR_MULTIPLICACION, OPERADOR_DIVISION;
+
+/* Gramática */
+start with programa;
+
+programa ::= lista_declaraciones
+    ;
+
+lista_declaraciones ::= declaracion
+    | lista_declaraciones declaracion
+    ;
+
+declaracion ::= declaracion_import
+    | declaracion_clase 
+    ;
+
+// IMPORTS
+declaracion_import ::= PALABRA_RESERVADA_IMPORT ruta_import PUNTO_Y_COMA
+    {:
+        System.out.println("Importando: Ruta ");
+    :}
+    ;
+
+ruta_import ::= IDENTIFICADOR
+    | ruta_import PUNTO IDENTIFICADOR
+    | ruta_import PUNTO OPERADOR_MULTIPLICACION  // para import java.util.*
+    ;
+
+// CLASES
+declaracion_clase ::= modificadores_clase PALABRA_RESERVADA_CLASS IDENTIFICADOR:id 
+     {:
+        TablaSimbolos tabla = ((Sintax)CUP$Sintax$parser).tabla;
+        AnalizadorSemantico semantico = ((Sintax)CUP$Sintax$parser).semantico;
+        tabla.entrarAmbito("clase_" + id.toString());
+
+        // Verificar si ya existe
+        if (tabla.existeEnAmbitoSuperior2(id.toString())) {
+            System.err.println("Error semántico línea " + idleft + 
+                ": Clase '" + id + "' ya fue declarada en este ámbito");
+                semantico.addError("Error semántico línea " + idleft + 
+                ": Clase '" + id + "' ya fue declarada en este ámbito");
+        } else {
+            tabla.agregar(id.toString(), "clase", "N/A", idleft, null);
+              System.out.println("Declarando clase: " + id.toString());
+            // TODO: Verificar que el tipo de 'e' sea compatible con tipoActual
+        }
+    :}
+    herencia implementacion OPERADOR_LLAVE_ABRIR cuerpo_clase OPERADOR_LLAVE_CERRAR
+    {:
+        TablaSimbolos tabla = ((Sintax)CUP$Sintax$parser).tabla;
+        tabla.salirAmbito();
+    :}
+    ;
+
+modificadores_clase ::= /* vacío */
+    | lista_modificadores
+    ;
+
+lista_modificadores ::= modificador
+    | lista_modificadores modificador
+    ;
+
+modificador ::= PALABRA_RESERVADA_PUBLIC
+    | PALABRA_RESERVADA_PRIVATE
+    | PALABRA_RESERVADA_PROTECTED
+    | PALABRA_RESERVADA_STATIC
+    | PALABRA_RESERVADA_FINAL
+    | PALABRA_RESERVADA_ABSTRACT
+    | PALABRA_RESERVADA_OVERRIDE
+    ;
+
+herencia ::= /* vacío */
+    | PALABRA_RESERVADA_EXTENDS IDENTIFICADOR
+    ;
+
+implementacion ::= /* vacío */
+    | PALABRA_RESERVADA_IMPLEMENTS lista_interfaces
+    ;
+
+lista_interfaces ::= IDENTIFICADOR
+    | lista_interfaces COMA IDENTIFICADOR
+    ;
+
+// ============ CUERPO DE CLASE ============
+cuerpo_clase ::= /* vacío */
+    | lista_miembros
+    ;
+
+lista_miembros ::= miembro
+    | lista_miembros miembro
+    ;
+
+miembro ::= declaracion_atributo
+    | declaracion_metodo
+    | declaracion_constructor
+    ;
+
+
+
+
+
+// ============ SENTENCIA WHEN ============
+sentencia_when ::= 
+    PALABRA_RESERVADA_WHEN OPERADOR_PARENTESIS_ABRIR expresion OPERADOR_PARENTESIS_CERRAR 
+    OPERADOR_LLAVE_ABRIR lista_ramas_when OPERADOR_LLAVE_CERRAR
+    ;
+
+lista_ramas_when ::= 
+    rama_when
+    | lista_ramas_when rama_when
+    ;
+
+rama_when ::=
+    condicion_when OPERADOR_FLECHA bloque     // caso normal
+    ;
+
+condicion_when ::=
+    //expresion_primaria                         // valor único
+   // | lista_valores_when                       // múltiples valores
+     expresion_rango     // in rango
+    //| OPERADOR_NOT  expresion_rango // !in rango
+    //| expresion_relacional                     // condición booleana
+    ;
+
+
+expresion_rango ::=
+    expresion OPERADOR_RANGO expresion  // ej: 1..10
+    ;
+
+
+
+
+
+
+
+
+// ============ ATRIBUTOS ============
+// Para atributos
+declaracion_atributo ::= modificadores_clase tipo IDENTIFICADOR:id PUNTO_Y_COMA
+    {:
+        TablaSimbolos tabla = ((Sintax)CUP$Sintax$parser).tabla;
+        tabla.agregar(id.toString(), "atributo", tipoActual, 0,null);
+        System.out.println("Declarando atributo: " + id.toString());
+    :}
+    |modificadores_clase tipo IDENTIFICADOR:id OPERADOR_ASIGNACION expresion:e PUNTO_Y_COMA
+     {:
+        TablaSimbolos tabla = ((Sintax)CUP$Sintax$parser).tabla;
+        AnalizadorSemantico semantico = ((Sintax)CUP$Sintax$parser).semantico;
+
+
+        // Verificar si ya existe
+        if (tabla.existeEnAmbitoSuperior2(id.toString())) {
+            System.err.println("Error semántico línea " + eleft + 
+                ": Variable '" + id + "' ya fue declarada en este ámbito");
+                semantico.addError("Error semántico línea " + eleft + 
+                ": Constante '" + id + "' ya fue declarada en este ámbito");
+        } else {
+            tabla.agregar(id.toString(), "variable", tipoActual, eleft,e.getValor());
+            System.out.println("Declarando variable local con asignación: " + id.toString());
+            if(semantico.sonTiposCompatibles(tipoActual,e.getTipo())){
+                System.out.println("Declarando variable local con asignación: " + id.toString());
+            }else{
+                semantico.addError("Error semántico línea " + eleft + 
+                ": Variable '" + id + "' espera un dato del tipo: "+tipoActual );
+            }
+            // TODO: Verificar que el tipo de 'e' sea compatible con tipoActual
+        }
+    :}
+    ;
+
+// ============ MÉTODOS ============    | IDENTIFICADOR OPERADOR_ASIGNACION expresion PUNTO_Y_COMA
+
+// Para métodos
+declaracion_metodo ::= modificadores_clase tipo IDENTIFICADOR:id 
+     {:
+        TablaSimbolos tabla = ((Sintax)CUP$Sintax$parser).tabla;
+        AnalizadorSemantico semantico = ((Sintax)CUP$Sintax$parser).semantico;
+        tabla.entrarAmbito("metodo_" + id.toString());
+
+        // Verificar si ya existe
+        if (tabla.existeEnAmbitoSuperior2(id.toString())) {
+            System.err.println("Error semántico línea " + idleft + 
+                ": metodo '" + id + "' ya fue declarada en este ámbito");
+                semantico.addError("Error semántico línea " + idleft + 
+                ": metodo '" + id + "' ya fue declarada en este ámbito");
+        } else {
+            tabla.agregar(id.toString(), "metodo", tipoActual, 0,null);
+             System.out.println("Declarando metodo: " + id.toString());
+        }
+    :}
+    OPERADOR_PARENTESIS_ABRIR parametros OPERADOR_PARENTESIS_CERRAR bloque
+    {:
+        TablaSimbolos tabla = ((Sintax)CUP$Sintax$parser).tabla;
+        tabla.salirAmbito();
+    :}
+    | modificadores_clase PALABRA_RESERVADA_VOID IDENTIFICADOR:id 
+    {:
+        TablaSimbolos tabla = ((Sintax)CUP$Sintax$parser).tabla;
+        tabla.agregar(id.toString(), "metodo", "void", 0,null);
+        System.out.println("Declarando método void: " + id.toString());
+        tabla.entrarAmbito("metodo_" + id.toString());
+    :}
+    OPERADOR_PARENTESIS_ABRIR parametros OPERADOR_PARENTESIS_CERRAR bloque
+    {:
+        TablaSimbolos tabla = ((Sintax)CUP$Sintax$parser).tabla;
+        tabla.salirAmbito();
+    :}
+    ;
+
+parametros ::= /* vacío */
+    | lista_parametros
+    ;
+
+lista_parametros ::= parametro
+    | lista_parametros COMA parametro
+    ;
+
+// Para parámetros
+parametro ::= tipo IDENTIFICADOR:id
+    | tipo IDENTIFICADOR:id OPERADOR_ASIGNACION expresion PUNTO_Y_COMA
+    {:
+        TablaSimbolos tabla = ((Sintax)CUP$Sintax$parser).tabla;
+        tabla.agregar(id.toString(), "parametro", tipoActual, 0,null);
+        System.out.println("Declarando parámetro: " + id.toString());
+    :}
+    ;
+
+// ============ CONSTRUCTOR ============
+declaracion_constructor ::= modificadores_clase IDENTIFICADOR OPERADOR_PARENTESIS_ABRIR parametros OPERADOR_PARENTESIS_CERRAR bloque
+    ;
+
+// ============ TIPOS ============
+// Para capturar tipos
+tipo ::= PALABRA_RESERVADA_INT 
+    {: 
+        tipoActual = "int"; 
+        RESULT = "int";
+        System.out.println("Tipo actual: int");
+    :}
+    | PALABRA_RESERVADA_STRING 
+    {: 
+        tipoActual = "String"; 
+        RESULT = "String";
+        System.out.println("Tipo actual: String");
+    :}
+    | PALABRA_RESERVADA_DOUBLE 
+    {: 
+        tipoActual = "double"; 
+        RESULT = "double";
+        System.out.println("Tipo actual: double");
+    :}
+    | PALABRA_RESERVADA_FLOAT 
+    {: 
+        tipoActual = "float"; 
+        RESULT = "float";
+        System.out.println("Tipo actual: float");
+    :}
+    | PALABRA_RESERVADA_CHAR
+    {: 
+        tipoActual = "char"; 
+        RESULT = "char";
+        System.out.println("Tipo actual: char");
+    :}
+    | PALABRA_RESERVADA_LONG
+    {: 
+        tipoActual = "long"; 
+        RESULT = "long";
+        System.out.println("Tipo actual: long");
+    :}
+    | PALABRA_RESERVADA_BOOLEAN
+    {: 
+        tipoActual = "boolean"; 
+        RESULT = "boolean";
+        System.out.println("Tipo actual: boolean");
+    :}
+
+    ;
+
+// ============ EXPRESIONES BÁSICAS ============
+
+// ============ BLOQUES Y SENTENCIAS ============
+bloque ::= OPERADOR_LLAVE_ABRIR OPERADOR_LLAVE_CERRAR
+    | OPERADOR_LLAVE_ABRIR lista_sentencias OPERADOR_LLAVE_CERRAR
+    ;
+
+lista_sentencias ::= sentencia
+    | lista_sentencias sentencia
+    ;
+
+sentencia ::= declaracion_variable_local
+    | sentencia_asignacion
+    | sentencia_if
+    | sentencia_while
+    | sentencia_for
+    | sentencia_return
+    | sentencia_llamada_metodo
+    | sentencia_try_catch
+    |sentencia_when
+    | bloque
+    ;
+
+
+
+// ============ TIPOS COMPUESTOS ============
+tipo_compuesto ::= PALABRA_RESERVADA_MAP OPERADOR_MENOR_QUE tipo:keyType COMA tipo:valueType OPERADOR_MAYOR_QUE
+    {: 
+        tipoActual = "Map<" + keyType + "," + valueType + ">"; 
+        RESULT = new Expresion("Compuesto(Map)","Map<" + keyType + "," + valueType + ">");
+        System.out.println("Tipo compuesto: " + tipoActual);
+    :}
+    | PALABRA_RESERVADA_LIST OPERADOR_MENOR_QUE tipo:elementType OPERADOR_MAYOR_QUE
+    {: 
+        tipoActual = "List<" + elementType + ">"; 
+        RESULT = new Expresion("Compuesto (List)","List<" + elementType + ">");
+        System.out.println("Tipo compuesto: " + tipoActual);
+    :}
+    | PALABRA_RESERVADA_ARRAYLIST OPERADOR_MENOR_QUE tipo:elementType OPERADOR_MAYOR_QUE
+    {: 
+        tipoActual = "ArrayList<" + elementType + ">"; 
+        RESULT = new Expresion("Compuesto(ArrayList)","ArrayList<" + elementType + ">");
+        System.out.println("Tipo compuesto: " + tipoActual);
+    :}
+    ;
+
+// ============ MANEJO DE EXCEPCIONES ============
+sentencia_try_catch ::= PALABRA_RESERVADA_TRY bloque lista_catch
+    ;
+
+lista_catch ::= catch
+    | lista_catch catch
+    ;
+
+catch ::= PALABRA_RESERVADA_CATCH OPERADOR_PARENTESIS_ABRIR OPERADOR_PARENTESIS_CERRAR bloque
+    ;
+
+// ============ DECLARACIONES DE VARIABLES ============
+// Para variables locales
+declaracion_variable_local ::= 
+    tipo IDENTIFICADOR:id PUNTO_Y_COMA
+    {:
+        TablaSimbolos tabla = ((Sintax)CUP$Sintax$parser).tabla;
+        AnalizadorSemantico semantico = ((Sintax)CUP$Sintax$parser).semantico;
+        // Verificar si ya existe
+        if (tabla.existeEnAmbitoSuperior2(id.toString())) {
+            System.err.println("Error semántico línea " + idleft + 
+                ": Variable '" + id + "' ya fue declarada en este ámbito");
+                semantico.addError("Error semántico línea " + idleft + 
+                ": Constante '" + id + "' ya fue declarada en este ámbito");
+        } else {
+            tabla.agregar(id.toString(), "variable", tipoActual, idleft,null);
+            System.out.println("Declarando variable local: " + id.toString());
+        }
+    :}
+    | tipo IDENTIFICADOR:id OPERADOR_ASIGNACION expresion:e PUNTO_Y_COMA
+    {:
+        TablaSimbolos tabla = ((Sintax)CUP$Sintax$parser).tabla;
+        AnalizadorSemantico semantico = ((Sintax)CUP$Sintax$parser).semantico;
+
+
+        // Verificar si ya existe
+        if (tabla.existeEnAmbitoSuperior2(id.toString())) {
+            System.err.println("Error semántico línea " + eleft + 
+                ": Variable '" + id + "' ya fue declarada en este ámbito");
+                semantico.addError("Error semántico línea " + eleft + 
+                ": Constante '" + id + "' ya fue declarada en este ámbito");
+        } else {
+            tabla.agregar(id.toString(), "variable", tipoActual, eleft,e.getValor());
+            System.out.println("Declarando variable local con asignación: " + id.toString());
+            if(semantico.sonTiposCompatibles(tipoActual,e.getTipo())){
+                System.out.println("Declarando variable local con asignación: " + id.toString());
+            }else{
+                semantico.addError("Error semántico línea " + eleft + 
+                ": Variable '" + id + "' espera un dato del tipo: "+tipoActual );
+            }
+            // TODO: Verificar que el tipo de 'e' sea compatible con tipoActual
+        }
+    :}
+    | PALABRA_RESERVADA_CONST tipo IDENTIFICADOR:id PUNTO_Y_COMA
+    {:
+        TablaSimbolos tabla = ((Sintax)CUP$Sintax$parser).tabla;
+        AnalizadorSemantico semantico = ((Sintax)CUP$Sintax$parser).semantico;
+        if (tabla.existeEnAmbitoSuperior2(id.toString())) {
+            System.err.println("Error semántico línea " + idleft + 
+                ": Constante '" + id + "' ya fue declarada en este ámbito");
+                semantico.addError("Error semántico línea " + idleft + 
+                ": Constante '" + id + "' ya fue declarada en este ámbito");
+                
+
+        } else {
+            tabla.agregar(id.toString(), "constante", tipoActual, idleft,null);
+            System.out.println("Declarando constante: " + id.toString());
+        }
+    :}
+    | PALABRA_RESERVADA_CONST tipo IDENTIFICADOR:id OPERADOR_ASIGNACION expresion:e PUNTO_Y_COMA
+    {:
+        TablaSimbolos tabla = ((Sintax)CUP$Sintax$parser).tabla;
+        AnalizadorSemantico semantico = ((Sintax)CUP$Sintax$parser).semantico;
+
+
+        // Verificar si ya existe
+        if (tabla.existeEnAmbitoSuperior2(id.toString())) {
+            System.err.println("Error semántico línea " + eleft + 
+                ": Variable '" + id + "' ya fue declarada en este ámbito");
+                semantico.addError("Error semántico línea " + eleft + 
+                ": Constante '" + id + "' ya fue declarada en este ámbito");
+        } else {
+            tabla.agregar(id.toString(), "constante", tipoActual, eleft,e.getValor());
+            System.out.println("Declarando variable local con asignación: " + id.toString());
+            if(semantico.sonTiposCompatibles(tipoActual,e.getTipo())){
+                System.out.println("Declarando variable local con asignación: " + id.toString());
+            }else{
+                semantico.addError("Error semántico línea " + eleft + 
+                ": Constante '" + id + "' espera un dato del tipo: "+tipoActual );
+            }
+        }
+    :}
+    |tipo_compuesto IDENTIFICADOR:id OPERADOR_ASIGNACION PALABRA_RESERVADA_NEW tipo_compuesto:tip OPERADOR_PARENTESIS_ABRIR OPERADOR_PARENTESIS_CERRAR PUNTO_Y_COMA
+    {:
+                System.out.println("Nos vamos todos a la recon");
+        TablaSimbolos tabla = ((Sintax)CUP$Sintax$parser).tabla;
+        AnalizadorSemantico semantico = ((Sintax)CUP$Sintax$parser).semantico;
+        if (tabla.existeEnAmbitoSuperior2(id.toString())) {
+            System.err.println("Error semántico línea " + idleft + 
+                ": Constante '" + id + "' ya fue declarada en este ámbito");
+                semantico.addError("Error semántico línea " + idleft + 
+                ": Constante '" + id + "' ya fue declarada en este ámbito");
+                
+
+        } else {
+            tabla.agregar(id.toString(), "Variable", tip.getTipo(), idleft,tip.getValor());
+            System.out.println("Declarando variable: " + id.toString());
+        }
+    :}
+    |PALABRA_RESERVADA_CONST tipo_compuesto IDENTIFICADOR:id OPERADOR_ASIGNACION PALABRA_RESERVADA_NEW tipo_compuesto:tip OPERADOR_PARENTESIS_ABRIR OPERADOR_PARENTESIS_CERRAR PUNTO_Y_COMA
+    {:
+                System.out.println("Nos vamos todos a la recon");
+        TablaSimbolos tabla = ((Sintax)CUP$Sintax$parser).tabla;
+        AnalizadorSemantico semantico = ((Sintax)CUP$Sintax$parser).semantico;
+        if (tabla.existeEnAmbitoSuperior2(id.toString())) {
+            System.err.println("Error semántico línea " + idleft + 
+                ": Constante '" + id + "' ya fue declarada en este ámbito");
+                semantico.addError("Error semántico línea " + idleft + 
+                ": Constante '" + id + "' ya fue declarada en este ámbito");
+                
+
+        } else {
+            tabla.agregar(id.toString(), "constante", tipoActual, idleft,tip.getValor());
+            System.out.println("Declarando constante: " + id.toString());
+        }
+    :}
+
+    ;
+
+
+
+
+
+
+
+
+
+
+
+/* Jerarquía completa de expresiones */
+expresion ::= 
+        expresion_logica:exp
+        {:
+            RESULT = exp;
+        :}
+      | expresion_matematica : exp
+        {:
+            RESULT = exp;
+        :}
+      ;
+
+
+/* Expresiones matemáticas */
+expresion_matematica ::=
+      expresion_matematica:exp_mat OPERADOR_ADICION expresion_matematica:exp_mat2
+    {:
+        AnalizadorSemantico semantico = ((Sintax)CUP$Sintax$parser).semantico;
+        if(!exp_mat.getTipo().equals(exp_mat2.getTipo())){
+                semantico.addError("Error semántico línea " + exp_matleft + 
+                ": Tipos no compatibles para realizar operación");         
+        }
+        RESULT = new Expresion( exp_mat.getTipo(), exp_mat.getValor() +"+" +exp_mat2.getValor());
+    :}
+    | expresion_matematica:exp_mat OPERADOR_SUSTRACCION expresion_matematica:exp_mat2
+    {:
+        AnalizadorSemantico semantico = ((Sintax)CUP$Sintax$parser).semantico;
+        if(!exp_mat.getTipo().equals(exp_mat2.getTipo())){
+                semantico.addError("Error semántico línea " + exp_matleft + 
+                ": Tipos no compatibles para realizar operación");         
+        }
+        RESULT = new Expresion( exp_mat.getTipo(), exp_mat.getValor()+ "-" +exp_mat2.getValor());
+    :}
+    | expresion_matematica:exp_mat OPERADOR_MULTIPLICACION expresion_matematica:exp_mat2
+    {:
+        AnalizadorSemantico semantico = ((Sintax)CUP$Sintax$parser).semantico;
+        if(!exp_mat.getTipo().equals(exp_mat2.getTipo())){
+                semantico.addError("Error semántico línea " + exp_matleft + 
+                ": Tipos no compatibles para realizar operación");         
+        }
+        RESULT = new Expresion( exp_mat.getTipo(), exp_mat.getValor() +"*" +exp_mat2.getValor());
+    :}
+    | expresion_matematica:exp_mat OPERADOR_DIVISION expresion_matematica:exp_mat2
+    {:
+        AnalizadorSemantico semantico = ((Sintax)CUP$Sintax$parser).semantico;
+        if(!exp_mat.getTipo().equals(exp_mat2.getTipo())){
+                semantico.addError("Error semántico línea " + exp_matleft + 
+                ": Tipos no compatibles para realizar operación");         
+        }
+        RESULT = new Expresion( exp_mat.getTipo(), exp_mat.getValor() +"/" +exp_mat2.getValor());
+    :}
+    | OPERADOR_PARENTESIS_ABRIR expresion_matematica:exp_mat OPERADOR_PARENTESIS_CERRAR
+    {:
+        RESULT = new Expresion( exp_mat.getTipo(), "("+exp_mat.getValor()+")");
+    :}
+    | expresion_primaria: exp
+    {:
+        RESULT = exp;
+    :}
+    ;
+//    
+
+
+
+
+
+
+
+// En expresiones donde se usa un identificador
+expresion_primaria ::=
+    IDENTIFICADOR:id
+    {:
+        TablaSimbolos tabla = ((Sintax)CUP$Sintax$parser).tabla;
+        Simbolo sim = tabla.buscar(id.toString());
+        AnalizadorSemantico semantico = ((Sintax)CUP$Sintax$parser).semantico;
+        if (sim == null) {
+            System.err.println("Error semántico línea " + idleft + 
+                ": Variable '" + id + "' no ha sido declarada");
+                semantico.addError("Error semántico línea " + idleft + 
+                ": Variable '" + id + "' no ha sido declarada");
+                RESULT = new Expresion("","");
+
+        }else{
+                RESULT = new Expresion(sim.tipoDato,sim.valor.toString());
+        }
+        
+        // Retornar el tipo para verificaciones posteriores
+    :}
+    | LITERAL_NUM_ENTERO: ent1
+    {:
+        System.out.println("JAA esto entero el tipo es:"+ ent1.toString());
+        RESULT = new Expresion("int",ent1.toString());
+    :}
+    | LITERAL_NUM_FLOTANTE: ent2
+    {:
+        System.out.println("JAA esto decimal el tipo es:"+ ent2.toString());
+        RESULT = new Expresion("float",ent2.toString());
+    :}
+    | LITERAL_STRING: ent3
+    {:
+        System.out.println("JAA esto string el tipo es:"+ ent3.toString());
+        RESULT = new Expresion("String",ent3.toString());
+    :}
+    |PALABRA_RESERVADA_NULL: ent
+    {:
+        System.out.println("JAA esto null el tipo es:"+ ent.toString());
+        RESULT = new Expresion("null","null");
+    :}
+    ;
+
+/* Expresiones lógicas */
+expresion_logica ::= 
+    expresion_logica:exp OPERADOR_AND expresion_logica:exp2
+    {:
+        RESULT = new Expresion( "boolean", exp.getValor() +"&&" +exp2.getValor());
+    :}
+    | expresion_logica:exp OPERADOR_OR expresion_logica:exp2
+    {:
+        RESULT = new Expresion( "boolean", exp.getValor() +"||" +exp2.getValor());
+    :}
+    | OPERADOR_NOT expresion_logica:exp
+    {:
+        RESULT = new Expresion( "boolean", "!" +exp.getValor());
+    :}
+    | OPERADOR_NOT IDENTIFICADOR:id
+    {:
+        RESULT = new Expresion( "boolean", "!" +id.toString());
+    :}
+    | PALABRA_RESERVADA_TRUE
+    {:
+        RESULT = new Expresion( "boolean", "true");
+    :}
+    | PALABRA_RESERVADA_FALSE
+    {:
+        RESULT = new Expresion( "boolean", "false");
+    :}
+    | OPERADOR_PARENTESIS_ABRIR expresion_logica:exp OPERADOR_PARENTESIS_CERRAR
+    {:
+        RESULT = new Expresion( "boolean","("+exp.getValor()+")");
+    :}
+    |expresion_relacional:exp
+    {:
+        RESULT = new Expresion( "boolean", exp.getValor());
+    :}
+;
+
+/* Expresiones relacionales */
+expresion_relacional ::=
+      expresion_numerica:exp OPERADOR_MAYOR_QUE expresion_numerica:exp2
+    {:
+        RESULT = new Expresion( "boolean", exp.getValor() +">" +exp2.getValor());
+    :}
+    | expresion_numerica:exp OPERADOR_MENOR_QUE expresion_numerica:exp2
+    {:
+        RESULT = new Expresion( "boolean", exp.getValor() +"<" +exp2.getValor());
+    :}
+    | expresion_numerica:exp OPERADOR_MAYOR_IGUAL_QUE expresion_numerica:exp2
+    {:
+        RESULT = new Expresion( "boolean", exp.getValor() +">=" +exp2.getValor());
+    :}
+    | expresion_numerica:exp OPERADOR_MENOR_IGUAL_QUE expresion_numerica:exp2
+    {:
+        RESULT = new Expresion( "boolean", exp.getValor() +"<=" +exp2.getValor());
+    :}
+    | expresion_numerica:exp OPERADOR_IGUAL expresion_numerica:exp2
+    {:
+        RESULT = new Expresion( "boolean", exp.getValor() +"==" +exp2.getValor());
+    :}
+    | expresion_numerica:exp OPERADOR_DISTINTO expresion_numerica:exp2
+    {:
+        RESULT = new Expresion( "boolean", exp.getValor() +"!=" +exp2.getValor());
+    :}
+
+
+   ;
+
+/* Expresiones numéricas (para validaciones) */
+expresion_numerica ::=
+    IDENTIFICADOR:id
+    {:
+        TablaSimbolos tabla = ((Sintax)CUP$Sintax$parser).tabla;
+        Simbolo sim = tabla.buscar(id.toString());
+        AnalizadorSemantico semantico = ((Sintax)CUP$Sintax$parser).semantico;
+        if (sim == null) {
+            System.err.println("Error semántico línea " + idleft + 
+                ": Variable '" + id + "' no ha sido declarada");
+                semantico.addError("Error semántico línea " + idleft + 
+                ": Variable '" + id + "' no ha sido declarada");
+                RESULT = new Expresion("null","null");
+
+        }else{
+                RESULT = new Expresion(sim.tipoDato,sim.valor.toString());
+        }
+        
+        // Retornar el tipo para verificaciones posteriores
+    :}
+    | LITERAL_NUM_ENTERO: ent1
+    {:
+        System.out.println("JAA esto entero el tipo es:"+ ent1.toString());
+        RESULT = new Expresion("int",ent1.toString());
+    :}
+    | LITERAL_NUM_FLOTANTE: ent2
+    {:
+        System.out.println("JAA esto decimal el tipo es:"+ ent2.toString());
+        RESULT = new Expresion("float",ent2.toString());
+    :}
+    ;
+
+
+
+
+
+// Operadores simples
+simple_operador ::= 
+    OPERADOR_ADICION
+    | OPERADOR_SUSTRACCION
+    | OPERADOR_MULTIPLICACION
+    | OPERADOR_DIVISION
+    | OPERADOR_INCREMENTO
+    | OPERADOR_DISMINUCION
+    ;
+
+
+
+
+
+// ============ ASIGNACIONES ============
+sentencia_asignacion ::= IDENTIFICADOR:id OPERADOR_ASIGNACION expresion:e PUNTO_Y_COMA
+    {:
+        TablaSimbolos tabla = ((Sintax)CUP$Sintax$parser).tabla;
+        Simbolo sim = tabla.buscar(id.toString());
+        AnalizadorSemantico semantico = ((Sintax)CUP$Sintax$parser).semantico;
+        if (sim == null) {
+            System.err.println("Error semántico línea " + eleft + 
+                ": Variable '" + id + "' no ha sido declarada");
+                semantico.addError("Error semántico línea " + eleft + 
+                ": Variable '" + id + "' no ha sido declarada");
+        } else {
+            // Verificar si es constante
+            if (sim.tipo.equals("constante")) {
+                System.err.println("Error semántico línea " + eleft + 
+                    ": No se puede reasignar la constante '" + id + "'");
+                semantico.addError("Error semántico línea " + eleft + 
+                ": Variable '" + id + "' ha sido declarada como constante");
+            }
+                        if(!sim.tipoDato.equals(e.getTipo())){
+                            semantico.addError("Error semántico línea " + eleft + 
+                            ": Constante '" + id + "' espera un dato del tipo: "+sim.tipoDato );
+           
+                        }
+
+            // TODO: Verificar compatibilidad de tipos
+            // if (!sonTiposCompatibles(sim.tipoDato, e.tipo)) { ... }
+        }
+    :}
+    | IDENTIFICADOR:id OPERADOR_ASIGNACION_ADICION expresion PUNTO_Y_COMA
+    | IDENTIFICADOR:id OPERADOR_ASIGNACION_SUSTRACCION expresion PUNTO_Y_COMA
+    | IDENTIFICADOR:id OPERADOR_ASIGNACION_MULTIPLICACION expresion PUNTO_Y_COMA
+    | IDENTIFICADOR:id OPERADOR_ASIGNACION_DIVISION expresion PUNTO_Y_COMA
+    | IDENTIFICADOR:id OPERADOR_INCREMENTO PUNTO_Y_COMA
+    | IDENTIFICADOR:id OPERADOR_DISMINUCION PUNTO_Y_COMA
+    | IDENTIFICADOR:id OPERADOR_ASIGNACION expresion_aritmetica PUNTO_Y_COMA
+
+    ;
+
+// ============ CONTROL DE FLUJO ============
+sentencia_if ::= PALABRA_RESERVADA_IF OPERADOR_PARENTESIS_ABRIR expresion_if OPERADOR_PARENTESIS_CERRAR bloque sentencia_else
+    ;
+
+expresion_if::=
+    expresion_logica
+;
+
+sentencia_else ::= /* vacio */
+    | PALABRA_RESERVADA_ELSE bloque
+    ;
+
+sentencia_while ::= PALABRA_RESERVADA_WHILE OPERADOR_PARENTESIS_ABRIR expresion OPERADOR_PARENTESIS_CERRAR bloque
+    ;
+
+sentencia_for ::= PALABRA_RESERVADA_FOR OPERADOR_PARENTESIS_ABRIR declaracion_for PUNTO_Y_COMA expresion PUNTO_Y_COMA expresion_for OPERADOR_PARENTESIS_CERRAR sentencia
+    | PALABRA_RESERVADA_FOR OPERADOR_PARENTESIS_ABRIR tipo IDENTIFICADOR OPERADOR_RANGO expresion OPERADOR_PARENTESIS_CERRAR bloque
+    ;
+
+declaracion_for ::= /* vacío */
+    | tipo IDENTIFICADOR
+    | tipo IDENTIFICADOR OPERADOR_ASIGNACION expresion
+    | IDENTIFICADOR OPERADOR_ASIGNACION expresion
+    ;
+
+expresion_for ::= /* vacío */
+    | expresion
+    | IDENTIFICADOR OPERADOR_INCREMENTO
+    | IDENTIFICADOR OPERADOR_DISMINUCION
+    | OPERADOR_INCREMENTO IDENTIFICADOR
+    | OPERADOR_DISMINUCION IDENTIFICADOR
+    ;
+
+// ============ RETURN ============
+sentencia_return ::= PALABRA_RESERVADA_RETURN PUNTO_Y_COMA
+    | PALABRA_RESERVADA_RETURN expresion PUNTO_Y_COMA
+    ;

@@ -1,0 +1,19 @@
+public class Main extends Main2 {
+private int r=0;
+int r=4;
+	
+//PALABRA_RESERVADA_LIST OPERADOR_MENOR_QUE tipo:elementType OPERADOR_MAYOR_QUE
+    public void metodoPrincipal(int i) {
+		float metodoPrincipal= "12+4.6"+3;
+		String R3= "dsd";
+		boolean R= !(2>3);
+	}
+ 	public void metodo3() {
+		s=5;
+	List<int> dfd =  new List<int>();
+	}
+    public void metodoPrincipal4(int i) {
+	String R3;
+	}
+
+}
